@@ -70,7 +70,7 @@ while getopts ":hq" opt; do
     esac
 done; shift $((${OPTIND} - 1))
 
-req_progs=(logger inotifywait)
+req_progs=(logger inotifywait rsync)
 for p in ${req_progs[@]}; do
     hash "$p" 2>&- || \
     { echo >&2 " Required program \"$p\" not found in \$PATH."; exit 1; }
@@ -85,13 +85,16 @@ function main() {
         inotifywait -q -e close_write ${STATE_FILE}
     fi
 
+    mkdir -p ${WORKDIR} 2>&1 || RETVAL=99 die "Unable to create work directory: ${WORKDIR}"
+
     DISK_TYPE=$(<${STATE_FILE})
     case ${DISK_TYPE} in
         cdrom)
             OUTPUTDIR+="/${MUSIC_DIR}"
             log "Ripping music from ${DEVICE} to ${OUTPUTDIR}"
-            (cd ${OUTPUTDIR} && abcde -V -G -o flac -d ${DEVICE} 2>&1)
-            rm -rf ${OUTPUTDIR}/abcde.* 2>&1 # Cleanup temp directories just in case
+            (cd ${WORKDIR} && abcde -V -G -o flac -d ${DEVICE} 2>&1)
+            rm -rf ${WORKDIR}/abcde.* 2>&1 # Cleanup any leftover temp directories
+            rsync -avz ${WORKDIR}/* ${OUTPUTDIR} && rm -rf ${WORKDIR}
             ;;
         *) log warn "Not implemented yet"
     esac
