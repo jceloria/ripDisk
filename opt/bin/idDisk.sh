@@ -84,7 +84,7 @@ function main() {
         log "Detected Blu-ray disc inserted."
         echo bluray > ${STATE_FILE}
     elif [[ ${ID_CDROM_MEDIA_CD} -eq 1 ]]; then
-        log "Detected CDROM disc inserted."
+        log "Detected CD-ROM disc inserted."
         echo cdrom > ${STATE_FILE}
     elif [[ ${ID_CDROM_MEDIA_DVD} -eq 1 ]]; then
         log "Detected DVD disc inserted."
