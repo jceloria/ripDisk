@@ -2,7 +2,7 @@
 
 SELF=${0##*/}; SDIR=${0%/*}
 ########################################################################################################################
-# Rip inserted optical disk
+# Identify inserted optical disk
 #
 # Copyright © 2017 by John Celoria <john@celoria.net>.
 #
@@ -25,13 +25,13 @@ SELF=${0##*/}; SDIR=${0%/*}
 VERSION=0.1
 
 # Read configuration file
-source /usr/local/etc/ripDisk.conf
+source /opt/etc/ripDisk.conf
 ######################################################### subs #########################################################
 # Print usage information
 function help() {
 cat << EOF
 Usage: ${SELF} [OPTION]...
-Rip inserted optical disk
+Identify inserted optical disk
 
   -h    Display this help message and exit
   -q    Quiet output
@@ -70,7 +70,7 @@ while getopts ":hq" opt; do
     esac
 done; shift $((${OPTIND} - 1))
 
-req_progs=(logger inotifywait)
+req_progs=(logger)
 for p in ${req_progs[@]}; do
     hash "$p" 2>&- || \
     { echo >&2 " Required program \"$p\" not found in \$PATH."; exit 1; }
@@ -80,23 +80,19 @@ done
 function main() {
     [[ ${QUIET} -eq 1 ]] && exec >${LOGFILE:-/dev/null} 2>&1
 
-    if [[ ! -e ${STATE_FILE} ]]; then
-        log "Waiting for ${STATE_FILE}"
-        inotifywait -q -e close_write ${STATE_FILE}
+    if [[ ${ID_CDROM_MEDIA_BD} -eq 1 ]]; then
+        log "Detected Blu-ray disc inserted."
+        echo bluray > ${STATE_FILE}
+    elif [[ ${ID_CDROM_MEDIA_CD} -eq 1 ]]; then
+        log "Detected CDROM disc inserted."
+        echo cdrom > ${STATE_FILE}
+    elif [[ ${ID_CDROM_MEDIA_DVD} -eq 1 ]]; then
+        log "Detected DVD disc inserted."
+        echo dvd > ${STATE_FILE}
+    else
+        log "Detected a change but unable to detect/read disc, was it ejected?"
+        rm -f ${STATE_FILE}
     fi
-
-    DISK_TYPE=$(<${STATE_FILE})
-    case ${DISK_TYPE} in
-        cdrom)
-            OUTPUTDIR+="/${MUSIC_DIR}"
-            log "Ripping music from ${DEVICE} to ${OUTPUTDIR}"
-            (cd ${OUTPUTDIR} && abcde -V -G -o flac -d ${DEVICE} 2>&1)
-            rm -rf ${OUTPUTDIR}/abcde.* 2>&1 # Cleanup temp directories just in case
-            ;;
-        *) log warn "Not implemented yet"
-    esac
-
-    rm -f ${STATE_FILE}
 
     exit 0
 }
