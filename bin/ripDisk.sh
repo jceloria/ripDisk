@@ -25,7 +25,7 @@ SELF=${0##*/}; SDIR=${0%/*}
 VERSION=0.1
 
 # Read configuration file
-source /opt/etc/ripDisk.conf
+source /opt/ripDisk/etc/ripDisk.conf
 ######################################################### subs #########################################################
 # Print usage information
 function help() {
@@ -85,16 +85,21 @@ function main() {
         inotifywait -q -e close_write ${STATE_FILE}
     fi
 
-    mkdir -p ${WORKDIR} 2>&1 || RETVAL=99 die "Unable to create work directory: ${WORKDIR}"
+    if [[ ! -e ${TMPDIR} ]]; then
+        mkdir -p ${TMPDIR} 2>&1 || RETVAL=99 die "Unable to create temporary directory: ${TMPDIR}"
+    fi
+
+    WORKDIR=$(mktemp -d ${TMPDIR}/ripDisk.XXXXX)
 
     DISK_TYPE=$(<${STATE_FILE})
     case ${DISK_TYPE} in
         cdrom)
             OUTPUTDIR+="/${MUSIC_DIR}"
             log "Ripping music from ${DEVICE} to ${OUTPUTDIR}"
-            (cd ${WORKDIR} && abcde -V -G -o flac -d ${DEVICE} 2>&1)
-            rm -rf ${WORKDIR}/abcde.* 2>&1 # Cleanup any leftover temp directories
-            rsync -avz ${WORKDIR}/* ${OUTPUTDIR} && rm -rf ${WORKDIR}
+            pushd ${WORKDIR} >/dev/null 2>&1
+            abcde -V -G -o flac -d ${DEVICE} 2>&1; rm -rf abcde.* 2>&1
+            (tar -cf - . | tar -xf - -C ${OUTPUTDIR}) && rm -rf ${WORKDIR}
+            popd >/dev/null 2>&1
             ;;
         *) log warn "Not implemented yet"
     esac

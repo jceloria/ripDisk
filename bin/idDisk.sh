@@ -25,7 +25,7 @@ SELF=${0##*/}; SDIR=${0%/*}
 VERSION=0.1
 
 # Read configuration file
-source /opt/etc/ripDisk.conf
+source /opt/ripDisk/etc/ripDisk.conf
 ######################################################### subs #########################################################
 # Print usage information
 function help() {
@@ -79,6 +79,8 @@ done
 
 function main() {
     [[ ${QUIET} -eq 1 ]] && exec >${LOGFILE:-/dev/null} 2>&1
+
+    touch ${STATE_FILE} && chown ${MEDIA_USER}:${MEDIA_GROUP} ${STATE_FILE}
 
     if [[ ${ID_CDROM_MEDIA_BD} -eq 1 ]]; then
         log "Detected Blu-ray disc inserted."

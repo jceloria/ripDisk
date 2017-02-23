@@ -1,4 +1,4 @@
 # ID_CDROM_MEDIA_BD = Bluray
 # ID_CDROM_MEDIA_DVD = DVD
 # ID_CDROM_MEDIA_CD = CD
-ACTION=="change", SUBSYSTEM=="block", RUN+="/opt/bin/idDisk.sh"
+ACTION=="change", SUBSYSTEM=="block", RUN+="/opt/ripDisk/bin/idDisk.sh"

@@ -7,7 +7,7 @@ Requisite=dev-cdrom.device
 
 [Service]
 Type=oneshot
-ExecStart=/opt/bin/ripDisk.sh
+ExecStart=/opt/ripDisk/bin/ripDisk.sh
 ExecStart=/usr/bin/eject /dev/cdrom
 StandardOutput=journal
 
