@@ -70,7 +70,7 @@ while getopts ":hq" opt; do
     esac
 done; shift $((${OPTIND} - 1))
 
-req_progs=(logger inotifywait rsync)
+req_progs=(logger timeout)
 for p in ${req_progs[@]}; do
     hash "$p" 2>&- || \
     { echo >&2 " Required program \"$p\" not found in \$PATH."; exit 1; }
@@ -80,25 +80,29 @@ done
 function main() {
     [[ ${QUIET} -eq 1 ]] && exec >${LOGFILE:-/dev/null} 2>&1
 
+    # Ensure we are running as the requested user
+    [[ $(id -u) -eq 0 ]] && exec sudo -n -u ${MEDIA_USER} -g ${MEDIA_GROUP} $(readlink -f $0) "$@"
+
     if [[ ! -e ${STATE_FILE} ]]; then
         log "Waiting for ${STATE_FILE}"
-        inotifywait -q -e close_write ${STATE_FILE}
+        timeout 30 bash -c -- "while [[ ! -e ${STATE_FILE} ]]; do sleep 1; done" || \
+            die "Timed out waiting for ${STATE_FILE}."
     fi
 
     if [[ ! -e ${TMPDIR} ]]; then
         mkdir -p ${TMPDIR} 2>&1 || RETVAL=99 die "Unable to create temporary directory: ${TMPDIR}"
     fi
 
-    WORKDIR=$(mktemp -d ${TMPDIR}/ripDisk.XXXXX)
+    export WORKDIR=$(mktemp -d ${TMPDIR}/ripDisk.XXXXX)
 
     DISK_TYPE=$(<${STATE_FILE})
     case ${DISK_TYPE} in
         cdrom)
-            OUTPUTDIR+="/${MUSIC_DIR}"
+            export OUTPUTDIR+="/${MUSIC_DIR}"
+            export WAVOUTPUTDIR="${WORKDIR}"
             log "Ripping music from ${DEVICE} to ${OUTPUTDIR}"
             pushd ${WORKDIR} >/dev/null 2>&1
-            abcde -V -G -o flac -d ${DEVICE} 2>&1; rm -rf abcde.* 2>&1
-            (tar -cf - . | tar -xf - -C ${OUTPUTDIR}) && rm -rf ${WORKDIR}
+            abcde -c ${ABCDE_CONF} -V -G -d ${DEVICE} 2>&1 && rm -rf ${WORKDIR}
             popd >/dev/null 2>&1
             ;;
         *) log warn "Not implemented yet"
